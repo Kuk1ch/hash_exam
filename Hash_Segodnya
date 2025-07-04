@@ -1,0 +1,146 @@
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <iomanip>
+
+using namespace std;
+
+// Функция для расчета среднего количества исследований
+pair<double, double> calculateProbes(double loadFactor) {
+    double successful = (1 + 1 / (1 - loadFactor)) / 2;
+    double unsuccessful = (1 + 1 / (1 - loadFactor) * (1 - loadFactor)) / 2;
+    return { successful, unsuccessful };
+}
+
+// Класс хэш-таблицы с открытой адресацией
+class HashTable {
+private:
+    vector<int> table;
+    int size;
+    int count;
+
+public:
+    HashTable(int size) : size(size), count(0) {
+        table.resize(size, -1); // -1 означает пустую ячейку
+    }
+
+    // Простая хэш-функция
+    int hash(int key) {
+        return key % size;
+    }
+
+    // Линейное пробирование
+    int linearProbe(int key) {
+        int index = hash(key);
+        while (table[index] != -1) {
+            index = (index + 1) % size;
+        }
+        return index;
+    }
+
+    // Вставка элемента
+    void insert(int key) {
+        if (count >= size) {
+            cerr << "Таблица заполнена" << endl;
+            return;
+        }
+        int index = linearProbe(key);
+        table[index] = key;
+        count++;
+    }
+
+    // Поиск элемента (возвращает количество исследований)
+    pair<bool, int> search(int key) {
+        int index = hash(key);
+        int probes = 1;
+
+        while (table[index] != -1) {
+            if (table[index] == key) {
+                return { true, probes }; // Успешный поиск
+            }
+            index = (index + 1) % size;
+            probes++;
+
+            if (probes > size) {
+                break; // Прошли всю таблицу
+            }
+        }
+
+        return { false, probes }; // Неудачный поиск
+    }
+
+    // Вывод таблицы
+    void print() {
+        cout << "Хэш-таблица (размер: " << size << ", заполнено: " << count
+            << ", коэффициент: " << fixed << setprecision(2) << (double)count / size << "):\n";
+        for (int i = 0; i < size; ++i) {
+            if (table[i] != -1) {
+                cout << "[" << i << "]: " << table[i] << endl;
+            }
+            else {
+                cout << "[" << i << "]: " << "пусто" << endl;
+            }
+        }
+        cout << endl;
+    }
+};
+
+int main() {
+    setlocale(LC_ALL, "RUS");
+    // Коэффициенты заполнения
+    vector<double> loadFactors = { 3.0 / 4, 7.0 / 8 };
+
+    cout << "Теоретические расчеты:\n";
+    cout << "Коэффициент | Успешный поиск | Неудачный поиск\n";
+    cout << "---------------------------------------------\n";
+    for (double lf : loadFactors) {
+        auto probes = calculateProbes(lf);
+        cout << fixed << setprecision(2) << lf << "       | "
+            << setprecision(4) << probes.first << "         | "
+            << probes.second << endl;
+    }
+    cout << "\n";
+
+    // Создаем и заполняем таблицы
+    for (double lf : loadFactors) {
+        int size = 16; // Размер таблицы
+        int elements = static_cast<int>(size * lf);
+
+        HashTable ht(size);
+
+        // Заполняем таблицу (равномерно)
+        for (int i = 0; i < elements; ++i) {
+            ht.insert(i * 10); // Вставляем значения 0, 10, 20, ...
+        }
+
+        // Выводим таблицу
+        ht.print();
+
+        // Тестируем поиск
+        int maxSuccessful = 0;
+        int maxUnsuccessful = 0;
+
+        // Тестируем успешный поиск
+        for (int i = 0; i < elements; ++i) {
+            auto result = ht.search(i * 10);
+            if (result.second > maxSuccessful) {
+                maxSuccessful = result.second;
+            }
+        }
+
+        // Тестируем неудачный поиск (ищем несуществующие элементы)
+        for (int i = 1; i <= size; ++i) {
+            auto result = ht.search(i * 10 + 1); // Гарантированно нет в таблице
+            if (result.second > maxUnsuccessful) {
+                maxUnsuccessful = result.second;
+            }
+        }
+
+        cout << "Максимальные исследования для коэффициента " << lf << ":\n";
+        cout << "  Успешный поиск: " << maxSuccessful << endl;
+        cout << "  Неудачный поиск: " << maxUnsuccessful << endl;
+        cout << "---------------------------------------------\n";
+    }
+
+    return 0;
+}
