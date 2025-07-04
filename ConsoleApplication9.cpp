@@ -1,129 +1,110 @@
 ﻿#include <iostream>
+#include <unordered_map>
 #include <vector>
 #include <string>
-#include <algorithm>
 using namespace std;
 
-// Функции для работы с регистром
-bool is_alpha(char ch) {
-    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
-}
-
-char to_lower(char ch) {
-    if (ch >= 'A' && ch <= 'Z')
-        return ch + ('a' - 'A');
-    return ch;
-}
-
-struct TrieNode {
-    TrieNode* children[26];
-    bool isEndOfWord;
-
-    TrieNode() : isEndOfWord(false) {
-        for (int i = 0; i < 26; ++i) {
-            children[i] = nullptr;
-        }
-    }
-
-    ~TrieNode() {
-        for (int i = 0; i < 26; ++i) {
-            if (children[i]) {
-                delete children[i];
-            }
-        }
-    }
+class TrieNode {
+public:
+    unordered_map<char, TrieNode*> children;
+    bool isEndOfWord = false;
 };
 
 class Trie {
 private:
     TrieNode* root;
 
-    // Рекурсивный сбор всех слов
-    void collectAllWords(TrieNode* node, string current, vector<string>& words) {
+    void collectWords(TrieNode* node, string current, vector<string>& result) {
         if (!node) return;
-
         if (node->isEndOfWord) {
-            words.push_back(current);
+            result.push_back(current);
         }
-
-        for (int i = 0; i < 26; ++i) {
-            if (node->children[i]) {
-                collectAllWords(node->children[i], current + char('a' + i), words);
-            }
+        for (auto& child : node->children) {
+            collectWords(child.second, current + child.first, result);
         }
     }
 
+    void deleteSubtree(TrieNode* node) {
+        if (!node) return;
+        for (auto& child : node->children) {
+            deleteSubtree(child.second);
+        }
+        delete node;
+    }
+
 public:
-    Trie() : root(new TrieNode()) {}
-    ~Trie() { delete root; }
+    Trie() {
+        root = new TrieNode();
+    }
 
     void insert(const string& word) {
         TrieNode* current = root;
-        for (char ch : word) {
-            if (!is_alpha(ch)) continue;
-
-            int index = to_lower(ch) - 'a';
-            if (index < 0 || index >= 26) continue;
-
-            if (!current->children[index]) {
-                current->children[index] = new TrieNode();
-            }
-            current = current->children[index];
+        for (char c : word) {
+            if (!current->children[c])
+                current->children[c] = new TrieNode();
+            current = current->children[c];
         }
         current->isEndOfWord = true;
     }
 
-    // Получение всех слов из дерева
     vector<string> getAllWords() {
-        vector<string> words;
-        collectAllWords(root, "", words);
-        return words;
+        vector<string> result;
+        collectWords(root, "", result);
+        return result;
     }
 
-    // Построение дерева с обратными словами (нестатический метод)
-    Trie buildReversedTrie() {
-        Trie reversedTrie;
-        vector<string> words = this->getAllWords();
-
-        for (string word : words) {
-            reverse(word.begin(), word.end());
-            reversedTrie.insert(word);
-        }
-
-        return reversedTrie;
-    }
-
-    // Вывод всех слов
     void printAllWords() {
-        vector<string> words;
-        collectAllWords(root, "", words);
-
-        cout << "Слова в дереве (" << words.size() << "):\n";
-        for (const string& word : words) {
-            cout << word << endl;
+        vector<string> words = getAllWords();
+        if (words.empty()) {
+            cout << "Trie пуст." << endl;
         }
-        cout << "-------------------------\n";
+        else {
+            cout << "Слова в Trie:" << endl;
+            for (const string& word : words) {
+                cout << word << endl;
+            }
+        }
+    }
+
+    ~Trie() {
+        deleteSubtree(root);
     }
 };
 
 int main() {
-    Trie originalTrie;
-    const int wordCount = 5;
+    setlocale(LC_ALL, "Rus");
 
-    cout << "Введите " << wordCount << " слов для исходного дерева:\n";
-    for (int i = 0; i < wordCount; ++i) {
-        string word;
-        cin >> word;
+    // Исходные слова
+    vector<string> words = {
+        "level",   
+        "hello",
+        "radar",   
+        "world",
+        "kayak"    
+    };
+
+    Trie originalTrie;
+
+    // Строим исходный trie
+    for (const string& word : words) {
         originalTrie.insert(word);
     }
 
-    cout << "\nИсходное дерево:\n";
+    cout << "Исходный trie:" << endl;
     originalTrie.printAllWords();
 
-    // Строим дерево с обратными словами
-    Trie reversedTrie = originalTrie.buildReversedTrie();
+    // Собираем слова из исходного trie
+    vector<string> allWords = originalTrie.getAllWords();
 
-    cout << "\nДерево с обратными словами:\n";
+    Trie reversedTrie;
+
+    for (const string& word : allWords) {
+            string reversed = word;
+            reverse(reversed.begin(), reversed.end());
+            reversedTrie.insert(reversed);
+    }
+
+    cout << "\nTrie из обратных слов :" << endl;
     reversedTrie.printAllWords();
 
     return 0;
