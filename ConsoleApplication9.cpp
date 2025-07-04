@@ -1,13 +1,22 @@
 ﻿#include <iostream>
-#include <unordered_map>
 #include <vector>
 #include <string>
+#include <algorithm>
 using namespace std;
+
+const int ALPHABET_SIZE = 26; // Предполагаем, что используются только строчные английские буквы
 
 class TrieNode {
 public:
-    unordered_map<char, TrieNode*> children;
-    bool isEndOfWord = false;
+    TrieNode* children[ALPHABET_SIZE];
+    bool isEndOfWord;
+
+    TrieNode() {
+        for (int i = 0; i < ALPHABET_SIZE; ++i) {
+            children[i] = nullptr;
+        }
+        isEndOfWord = false;
+    }
 };
 
 class Trie {
@@ -15,19 +24,23 @@ private:
     TrieNode* root;
 
     void collectWords(TrieNode* node, string current, vector<string>& result) {
-        if (!node) return;
         if (node->isEndOfWord) {
             result.push_back(current);
         }
-        for (auto& child : node->children) {
-            collectWords(child.second, current + child.first, result);
+        for (int i = 0; i < ALPHABET_SIZE; ++i) {
+            if (node->children[i]) {
+                char c = 'a' + i;
+                collectWords(node->children[i], current + c, result);
+            }
         }
     }
 
     void deleteSubtree(TrieNode* node) {
         if (!node) return;
-        for (auto& child : node->children) {
-            deleteSubtree(child.second);
+        for (int i = 0; i < ALPHABET_SIZE; ++i) {
+            if (node->children[i]) {
+                deleteSubtree(node->children[i]);
+            }
         }
         delete node;
     }
@@ -40,9 +53,12 @@ public:
     void insert(const string& word) {
         TrieNode* current = root;
         for (char c : word) {
-            if (!current->children[c])
-                current->children[c] = new TrieNode();
-            current = current->children[c];
+            int index = c - 'a';
+            if (index < 0 || index >= ALPHABET_SIZE) continue; // Пропускаем недопустимые символы
+            if (!current->children[index]) {
+                current->children[index] = new TrieNode();
+            }
+            current = current->children[index];
         }
         current->isEndOfWord = true;
     }
@@ -76,11 +92,11 @@ int main() {
 
     // Исходные слова
     vector<string> words = {
-        "level",   
+        "level",
         "hello",
-        "radar",   
+        "radar",
         "world",
-        "kayak"    
+        "kayak"
     };
 
     Trie originalTrie;
@@ -99,12 +115,12 @@ int main() {
     Trie reversedTrie;
 
     for (const string& word : allWords) {
-            string reversed = word;
-            reverse(reversed.begin(), reversed.end());
-            reversedTrie.insert(reversed);
+        string reversed = word;
+        reverse(reversed.begin(), reversed.end());
+        reversedTrie.insert(reversed);
     }
 
-    cout << "\nTrie из обратных слов :" << endl;
+    cout << "\nTrie из обратных слов:" << endl;
     reversedTrie.printAllWords();
 
     return 0;
